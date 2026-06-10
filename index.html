@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planning Portal — Feedback Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f8f9fa; --card: #ffffff; --border: #e9ecef;
+    --text: #212529; --text-muted: #6c757d;
+    --positive: #2d9d78; --negative: #e24b4a; --neutral: #6c757d;
+    --blue: #378add; --orange: #ef9f27;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          background: var(--bg); color: var(--text); font-size: 14px; }
+  .header { background: var(--card); border-bottom: 1px solid var(--border);
+             padding: 20px 32px; display: flex; justify-content: space-between;
+             align-items: center; }
+  .header h1 { font-size: 18px; font-weight: 500; }
+  .header .meta { font-size: 12px; color: var(--text-muted); }
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+              margin-bottom: 24px; }
+  .metric { background: var(--card); border: 1px solid var(--border);
+             border-radius: 8px; padding: 16px 20px; }
+  .metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+                   color: var(--text-muted); margin-bottom: 6px; }
+  .metric-value { font-size: 28px; font-weight: 500; }
+  .metric-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .metric-value.positive { color: var(--positive); }
+  .metric-value.negative { color: var(--negative); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+             margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+             margin-bottom: 16px; }
+  .card { background: var(--card); border: 1px solid var(--border);
+           border-radius: 8px; padding: 20px; }
+  .card-title { font-size: 13px; font-weight: 500; margin-bottom: 16px;
+                 color: var(--text); }
+  .card-subtitle { font-size: 11px; color: var(--text-muted); margin-top: -12px;
+                    margin-bottom: 16px; }
+  canvas { max-height: 280px; }
+  .section-label { font-size: 11px; font-weight: 500; text-transform: uppercase;
+                    letter-spacing: 0.08em; color: var(--text-muted);
+                    margin: 24px 0 12px; }
+  .full-width { grid-column: 1 / -1; }
+  @media (max-width: 900px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Planning Portal — User Feedback</h1>
+    <div class="meta">Last updated: 2026-06-09 &nbsp;·&nbsp;
+      16321 reviews this run &nbsp;·&nbsp;
+      1 weeks of data
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Metrics row -->
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">Reviews this week</div>
+      <div class="metric-value">16321</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Positive</div>
+      <div class="metric-value positive">41.7%</div>
+      <div class="metric-sub">6810 reviews</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Negative</div>
+      <div class="metric-value negative">26.5%</div>
+      <div class="metric-sub">4325 reviews</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Most negative tag</div>
+      <div class="metric-value" style="font-size:16px">
+        Fees, charges and quotes
+      </div>
+      <div class="metric-sub">
+        score: -0.696
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Sentiment over time</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Sentiment trend</div>
+      <canvas id="sentimentTrend"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Review volume</div>
+      <canvas id="volumeTrend"></canvas>
+    </div>
+  </div>
+
+  <div class="section-label">Tag group analysis</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Sentiment score by tag group</div>
+      <div class="card-subtitle">This week · -1 = all negative, +1 = all positive</div>
+      <canvas id="tagBar"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Tag group volume trend</div>
+      <div class="card-subtitle">Top 6 groups over time</div>
+      <canvas id="tagVolume"></canvas>
+    </div>
+  </div>
+
+  <div class="section-label">Feature analysis</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Feature sentiment — this week</div>
+      <div class="card-subtitle">% of reviews mentioning each feature that are negative</div>
+      <canvas id="featBar"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Feature negativity trend</div>
+      <div class="card-subtitle">Top 5 features over time</div>
+      <canvas id="featTrend"></canvas>
+    </div>
+  </div>
+
+  <div class="section-label">Error patterns</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Most common errors — this week</div>
+      <canvas id="errorBar"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Error frequency trend</div>
+      <canvas id="errorTrend"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const POSITIVE = '#2d9d78';
+const NEGATIVE = '#e24b4a';
+const NEUTRAL  = '#6c757d';
+const BLUE     = '#378add';
+const ORANGE   = '#ef9f27';
+const PALETTE  = ['#378add','#ef9f27','#e24b4a','#2d9d78','#9b59b6','#1abc9c'];
+
+const defaultOpts = {
+  responsive: true,
+  maintainAspectRatio: true,
+  plugins: { legend: { labels: { font: { size: 11 } } } },
+  scales: {
+    x: { ticks: { font: { size: 10 } } },
+    y: { ticks: { font: { size: 10 } } }
+  }
+};
+
+// ── Sentiment trend ────────────────────────────────────────────────────
+const st = {"dates": ["2026-W24"], "positive": [41.7], "negative": [26.5], "total": [16321]};
+new Chart(document.getElementById('sentimentTrend'), {
+  type: 'line',
+  data: {
+    labels: st.dates,
+    datasets: [
+      { label: 'Positive %', data: st.positive, borderColor: POSITIVE,
+         backgroundColor: POSITIVE + '20', fill: true, tension: 0.3 },
+      { label: 'Negative %', data: st.negative, borderColor: NEGATIVE,
+         backgroundColor: NEGATIVE + '20', fill: true, tension: 0.3 },
+    ]
+  },
+  options: { ...defaultOpts, scales: {
+    x: { ticks: { font: { size: 10 } } },
+    y: { min: 0, max: 100, ticks: { font: { size: 10 },
+         callback: v => v + '%' } }
+  } }
+});
+
+// ── Volume trend ───────────────────────────────────────────────────────
+new Chart(document.getElementById('volumeTrend'), {
+  type: 'bar',
+  data: {
+    labels: st.dates,
+    datasets: [{
+      label: 'Reviews', data: st.total,
+      backgroundColor: BLUE + 'aa', borderColor: BLUE, borderWidth: 1
+    }]
+  },
+  options: defaultOpts
+});
+
+// ── Tag group bar ──────────────────────────────────────────────────────
+const tb = {"labels": ["Fees, charges and quotes", "Challenges and Workarounds", "Document upload and handling", "Location plans, addresses and mapping", "Forms & application details", "Payments", "Negative experience", "Guidance, clarity & jargon", "User type", "Missing features & feature requests", "Planning App/work types", "General UX", "Customer support & human assistance", "Miscellaneous", "Overall Positive Experience"], "scores": [-0.696, -0.663, -0.507, -0.489, -0.444, -0.442, -0.402, -0.359, -0.358, -0.341, -0.25, -0.238, -0.143, -0.058, 0.747], "counts": [1079, 246, 769, 542, 126, 86, 2718, 351, 120, 1373, 440, 21, 63, 191, 8115]};
+new Chart(document.getElementById('tagBar'), {
+  type: 'bar',
+  data: {
+    labels: tb.labels,
+    datasets: [{
+      label: 'Sentiment score',
+      data: tb.scores,
+      backgroundColor: tb.scores.map(s => s >= 0 ? POSITIVE + 'cc' : NEGATIVE + 'cc'),
+      borderColor:     tb.scores.map(s => s >= 0 ? POSITIVE : NEGATIVE),
+      borderWidth: 1
+    }]
+  },
+  options: { ...defaultOpts,
+    indexAxis: 'y',
+    scales: {
+      x: { min: -1, max: 1, ticks: { font: { size: 10 } } },
+      y: { ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// ── Tag volume trend ───────────────────────────────────────────────────
+const tv = {"Overall Positive Experience": {"dates": ["2026-W24"], "counts": [8115], "scores": [0.747]}, "Negative experience": {"dates": ["2026-W24"], "counts": [2718], "scores": [-0.402]}, "Missing features & feature requests": {"dates": ["2026-W24"], "counts": [1373], "scores": [-0.341]}, "Fees, charges and quotes": {"dates": ["2026-W24"], "counts": [1079], "scores": [-0.696]}, "Document upload and handling": {"dates": ["2026-W24"], "counts": [769], "scores": [-0.507]}, "Location plans, addresses and mapping": {"dates": ["2026-W24"], "counts": [542], "scores": [-0.489]}};
+const tvDatasets = Object.entries(tv).map(([grp, d], i) => ({
+  label: grp, data: d.counts,
+  borderColor: PALETTE[i % PALETTE.length],
+  backgroundColor: 'transparent', tension: 0.3
+}));
+const tvDates = Object.values(tv)[0]?.dates || [];
+new Chart(document.getElementById('tagVolume'), {
+  type: 'line',
+  data: { labels: tvDates, datasets: tvDatasets },
+  options: defaultOpts
+});
+
+// ── Feature bar ────────────────────────────────────────────────────────
+const fb = {"labels": ["Service charge", "LPI tool", "Document upload", "Payment system", "Fee calculator", "Dropdown menu", "Application form", "Lawful development certificate", "Householder application", "Nomination/payment", "BNG metric tool", "Helpline", "RequestAPlan", "CIL form", "Listed building consent"], "neg_pct": [63.1, 61.1, 59.8, 53.6, 53.3, 52.4, 51.9, 50.0, 44.4, 42.5, 40.5, 40.0, 40.0, 37.0, 36.6], "pos_pct": [], "total": [141, 54, 117, 28, 15, 63, 108, 30, 63, 87, 42, 15, 30, 81, 112]};
+new Chart(document.getElementById('featBar'), {
+  type: 'bar',
+  data: {
+    labels: fb.labels,
+    datasets: [
+      { label: 'Negative %', data: fb.neg_pct,
+         backgroundColor: NEGATIVE + 'cc', borderColor: NEGATIVE, borderWidth: 1 },
+    ]
+  },
+  options: { ...defaultOpts,
+    indexAxis: 'y',
+    scales: {
+      x: { min: 0, max: 100, ticks: { font: { size: 10 },
+           callback: v => v + '%' } },
+      y: { ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// ── Feature trend ──────────────────────────────────────────────────────
+const ft = {"Service charge": {"dates": ["2026-W24"], "neg_pct": [63.1], "total": [141]}, "LPI tool": {"dates": ["2026-W24"], "neg_pct": [61.1], "total": [54]}, "Document upload": {"dates": ["2026-W24"], "neg_pct": [59.8], "total": [117]}, "Payment system": {"dates": ["2026-W24"], "neg_pct": [53.6], "total": [28]}, "Fee calculator": {"dates": ["2026-W24"], "neg_pct": [53.3], "total": [15]}};
+const ftDatasets = Object.entries(ft).map(([f, d], i) => ({
+  label: f, data: d.neg_pct,
+  borderColor: PALETTE[i % PALETTE.length],
+  backgroundColor: 'transparent', tension: 0.3
+}));
+const ftDates = Object.values(ft)[0]?.dates || [];
+new Chart(document.getElementById('featTrend'), {
+  type: 'line',
+  data: { labels: ftDates, datasets: ftDatasets },
+  options: { ...defaultOpts, scales: {
+    x: { ticks: { font: { size: 10 } } },
+    y: { min: 0, max: 100, ticks: { font: { size: 10 },
+         callback: v => v + '%' } }
+  } }
+});
+
+// ── Error bar ──────────────────────────────────────────────────────────
+const eb = {"labels": ["file size", "could not find", "upload limit", "didn't work", "cannot upload", "did not work", "couldn't upload", "doesn't work", "could not upload", "did not recognise"], "counts": [39, 24, 15, 14, 12, 12, 10, 10, 9, 9]};
+new Chart(document.getElementById('errorBar'), {
+  type: 'bar',
+  data: {
+    labels: eb.labels,
+    datasets: [{
+      label: 'Mentions', data: eb.counts,
+      backgroundColor: ORANGE + 'cc', borderColor: ORANGE, borderWidth: 1
+    }]
+  },
+  options: { ...defaultOpts, indexAxis: 'y' }
+});
+
+// ── Error trend ────────────────────────────────────────────────────────
+const topErrors = eb.labels.slice(0, 5);
+const etDatasets = topErrors.map((e, i) => {
+  const rows = [{"week": "2026-W24", "error_pattern": "file size", "count": 39}, {"week": "2026-W24", "error_pattern": "could not find", "count": 24}, {"week": "2026-W24", "error_pattern": "upload limit", "count": 15}, {"week": "2026-W24", "error_pattern": "didn't work", "count": 14}, {"week": "2026-W24", "error_pattern": "cannot upload", "count": 12}];
+  const filtered = rows.filter(r => r.error_pattern === e);
+  const dates = [...new Set(rows.map(r => r.week))].sort();
+  const counts = dates.map(d => {
+    const row = filtered.find(r => r.week === d);
+    return row ? row.count : 0;
+  });
+  return {
+    label: e, data: counts,
+    borderColor: PALETTE[i % PALETTE.length],
+    backgroundColor: 'transparent', tension: 0.3
+  };
+});
+const etDates = [...new Set(["2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24", "2026-W24"])].sort();
+new Chart(document.getElementById('errorTrend'), {
+  type: 'line',
+  data: { labels: etDates, datasets: etDatasets },
+  options: defaultOpts
+});
+
+</script>
+</body>
+</html>
